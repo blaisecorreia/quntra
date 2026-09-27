@@ -1,4 +1,16 @@
 import mongoose from 'mongoose';
+import dns from 'node:dns';
+
+// Some networks hand the OS a link-local IPv6 DNS resolver that Node's
+// built-in resolver (c-ares) fails to query correctly for SRV records
+// (EBADRESP), even though the OS resolver itself handles it fine. Prefer
+// well-known public resolvers so `mongodb+srv://` lookups don't intermittently
+// fail; keep the original servers as a fallback.
+try {
+    dns.setServers(['1.1.1.1', '8.8.8.8']);
+} catch {
+    // non-fatal — fall back to whatever the OS provides
+}
 
 const MONGODB_URI = process.env.MONGODB_URI;
 

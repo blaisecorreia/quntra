@@ -55,12 +55,6 @@ declare global {
         href: string;
     };
 
-    type SearchCommandProps = {
-        renderAs?: 'button' | 'text';
-        label?: string;
-        initialStocks: StockWithWatchlistStatus[];
-    };
-
     type WelcomeEmailData = {
         email: string;
         name: string;
@@ -118,6 +112,7 @@ declare global {
 
     type ProfileData = {
         name?: string;
+        exchange?: string;
         marketCapitalization?: number;
     };
 
@@ -173,8 +168,8 @@ declare global {
         setOpen?: (open: boolean) => void;
         renderAs?: 'button' | 'text';
         buttonLabel?: string;
-        buttonVariant?: 'primary' | 'secondary';
         className?: string;
+        initialStocks: StockWithWatchlistStatus[];
     };
 
     type AlertData = {
@@ -214,6 +209,17 @@ declare global {
         alertType: 'upper' | 'lower';
         threshold: number;
         changePercent?: number;
+        isActive: boolean;
+    };
+
+    type ChatMessage = {
+        role: 'user' | 'assistant';
+        content: string;
+        createdAt: string;
+    };
+
+    type ChatWidgetProps = {
+        initialMessages: ChatMessage[];
     };
 }
 
