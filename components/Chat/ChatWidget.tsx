@@ -1,9 +1,10 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { MessageCircle, X, Send, Loader2, Sparkles } from 'lucide-react';
+import { MessageCircle, X, Send, Loader2, Sparkles, CheckCircle2, XCircle, AlertTriangle } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
-import { sendChatMessage } from '@/lib/actions/chat.actions';
+import { toast } from 'sonner';
+import { sendChatMessage, resolveChatAction } from '@/lib/actions/chat.actions';
 
 const GREETING = "Hi! How can I help you today? Ask me about your watchlist, your alerts, or what might fit your goals.";
 
@@ -26,11 +27,70 @@ const markdownComponents = {
   ),
 };
 
+const describeAction = (action: ChatAction, tense: 'propose' | 'done' = 'propose'): string => {
+  if (action.type === 'add_to_watchlist') {
+    const verb = tense === 'propose' ? 'Add' : 'Added';
+    return `${verb} ${action.params.symbol} (${action.params.company}) to your watchlist`;
+  }
+  const { symbol, alertName, alertType, threshold } = action.params;
+  const verb = tense === 'propose' ? 'Create alert' : 'Created alert';
+  return `${verb} "${alertName}" — notify when ${symbol} goes ${alertType === 'upper' ? 'above' : 'below'} $${threshold?.toFixed(2)}`;
+};
+
+const ActionCard = ({
+  action,
+  isResolving,
+  onDecide,
+}: {
+  action: ChatAction;
+  isResolving: boolean;
+  onDecide: (decision: 'confirm' | 'cancel') => void;
+}) => {
+  if (action.status === 'pending') {
+    return (
+      <div className="chat-action-card">
+        <div className="chat-action-desc">{describeAction(action)}</div>
+        <div className="chat-action-buttons">
+          <button onClick={() => onDecide('cancel')} disabled={isResolving} className="chat-action-cancel">
+            Cancel
+          </button>
+          <button onClick={() => onDecide('confirm')} disabled={isResolving} className="chat-action-confirm">
+            {isResolving ? <Loader2 className="animate-spin h-3.5 w-3.5" /> : 'Confirm'}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (action.status === 'confirmed') {
+    return (
+      <div className="chat-action-status chat-action-status-ok">
+        <CheckCircle2 size={14} /> {describeAction(action, 'done')}
+      </div>
+    );
+  }
+
+  if (action.status === 'cancelled') {
+    return (
+      <div className="chat-action-status chat-action-status-muted">
+        <XCircle size={14} /> Cancelled
+      </div>
+    );
+  }
+
+  return (
+    <div className="chat-action-status chat-action-status-error">
+      <AlertTriangle size={14} /> {action.error || 'Could not complete this action'}
+    </div>
+  );
+};
+
 export const ChatWidget = ({ initialMessages }: ChatWidgetProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
   const [input, setInput] = useState('');
   const [isSending, setIsSending] = useState(false);
+  const [resolvingActionId, setResolvingActionId] = useState<string | null>(null);
   const listRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -69,6 +129,25 @@ export const ChatWidget = ({ initialMessages }: ChatWidgetProps) => {
     }
   };
 
+  const handleActionDecision = async (messageId: string | undefined, decision: 'confirm' | 'cancel') => {
+    if (!messageId) return;
+    setResolvingActionId(messageId);
+
+    try {
+      const res = await resolveChatAction({ messageId, decision });
+      if (res.success && res.data) {
+        setMessages((prev) => prev.map((m) => (m.id === messageId ? { ...m, action: res.data } : m)));
+      } else {
+        toast.error(res.error || 'Could not update this action');
+      }
+    } catch (error) {
+      console.log('Chat action decision error:', error);
+      toast.error('Something went wrong. Please try again.');
+    } finally {
+      setResolvingActionId(null);
+    }
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -102,11 +181,18 @@ export const ChatWidget = ({ initialMessages }: ChatWidgetProps) => {
           <div ref={listRef} className="chat-panel-list">
             {messages.length === 0 && <div className="chat-greeting">{GREETING}</div>}
             {messages.map((m, i) => (
-              <div key={i} className={`chat-message ${m.role === 'user' ? 'chat-message-user' : 'chat-message-assistant'}`}>
+              <div key={m.id ?? i} className={`chat-message ${m.role === 'user' ? 'chat-message-user' : 'chat-message-assistant'}`}>
                 {m.role === 'assistant' ? (
                   <ReactMarkdown components={markdownComponents}>{m.content}</ReactMarkdown>
                 ) : (
                   m.content
+                )}
+                {m.action && (
+                  <ActionCard
+                    action={m.action}
+                    isResolving={resolvingActionId === m.id}
+                    onDecide={(decision) => handleActionDecision(m.id, decision)}
+                  />
                 )}
               </div>
             ))}

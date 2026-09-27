@@ -434,6 +434,33 @@
     .chat-send-btn {
         @apply h-9 w-9 shrink-0 rounded-lg bg-yellow-500 hover:bg-yellow-400 disabled:opacity-40 disabled:cursor-not-allowed text-gray-900 flex items-center justify-center cursor-pointer transition-colors;
     }
+    .chat-action-card {
+        @apply mt-2 pt-2 border-t border-gray-600/50 flex flex-col gap-2;
+    }
+    .chat-action-desc {
+        @apply text-xs text-gray-300;
+    }
+    .chat-action-buttons {
+        @apply flex items-center gap-2 justify-end;
+    }
+    .chat-action-cancel {
+        @apply text-xs px-3 py-1.5 rounded-md border border-gray-600 text-gray-300 hover:bg-gray-600/40 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer transition-colors;
+    }
+    .chat-action-confirm {
+        @apply text-xs px-3 py-1.5 rounded-md bg-yellow-500 hover:bg-yellow-400 text-gray-900 font-medium disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer transition-colors flex items-center gap-1.5 min-w-16 justify-center;
+    }
+    .chat-action-status {
+        @apply mt-2 pt-2 border-t border-gray-600/50 flex items-center gap-1.5 text-xs;
+    }
+    .chat-action-status-ok {
+        @apply text-green-400;
+    }
+    .chat-action-status-muted {
+        @apply text-gray-400;
+    }
+    .chat-action-status-error {
+        @apply text-red-400;
+    }
 }
 
 /* Market News Component Styles */

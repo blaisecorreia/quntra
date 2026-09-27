@@ -1,5 +1,23 @@
 import mongoose from 'mongoose';
 
+const chatActionSchema = new mongoose.Schema({
+  type: {
+    type: String,
+    enum: ['add_to_watchlist', 'create_alert'],
+    required: true,
+  },
+  params: {
+    type: mongoose.Schema.Types.Mixed,
+    required: true,
+  },
+  status: {
+    type: String,
+    enum: ['pending', 'confirmed', 'cancelled', 'failed'],
+    default: 'pending',
+  },
+  error: String,
+}, { _id: false });
+
 const chatMessageSchema = new mongoose.Schema({
   role: {
     type: String,
@@ -10,11 +28,15 @@ const chatMessageSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
+  action: {
+    type: chatActionSchema,
+    default: undefined,
+  },
   createdAt: {
     type: Date,
     default: Date.now,
   },
-}, { _id: false });
+});
 
 const chatSchema = new mongoose.Schema({
   userId: {
