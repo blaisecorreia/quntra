@@ -128,6 +128,7 @@ declare global {
 
     type WatchlistTableProps = {
         watchlist: StockWithData[];
+        earningsBySymbol?: Record<string, EarningsEvent>;
     };
 
     type StockWithData = {
@@ -210,6 +211,27 @@ declare global {
         threshold: number;
         changePercent?: number;
         isActive: boolean;
+    };
+
+    type RawEarningsEvent = {
+        symbol: string;
+        date: string;
+        hour: 'bmo' | 'amc' | '';
+        quarter: number;
+        year: number;
+        epsEstimate: number | null;
+        epsActual: number | null;
+    };
+
+    type EarningsCalendarResponse = {
+        earningsCalendar: RawEarningsEvent[];
+    };
+
+    type EarningsEvent = {
+        symbol: string;
+        date: string;
+        hour: 'bmo' | 'amc' | '';
+        epsEstimate: number | null;
     };
 
     type ChatActionType = 'add_to_watchlist' | 'create_alert';

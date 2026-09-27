@@ -322,6 +322,9 @@
     .table-cell {
         @apply px-4 py-3 font-medium text-base truncate;
     }
+    .earnings-badge {
+        @apply inline-flex items-center gap-1 mt-0.5 text-xs font-normal text-yellow-500;
+    }
     .add-alert {
         @apply flex text-sm items-center whitespace-nowrap gap-1.5 px-3 w-fit py-2 text-yellow-600 border border-yellow-600/20 rounded font-medium bg-transparent hover:bg-transparent cursor-pointer transition-colors;
     }

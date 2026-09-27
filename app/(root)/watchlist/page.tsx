@@ -3,7 +3,7 @@ import { getAlertsByUserId } from '@/lib/actions/alerts.actions';
 import { WatchlistTable } from '@/components/Watchlist/WatchlistTable';
 import { WatchlistNews } from '@/components/Watchlist/WatchlistNews';
 import { AlertsList } from '@/components/Alerts/AlertsList';
-import { getMarketNews } from '@/lib/actions/finnhub.actions';
+import { getMarketNews, getWatchlistEarnings } from '@/lib/actions/finnhub.actions';
 import { Metadata } from 'next';
 import Link from 'next/link';
 import { Star } from 'lucide-react';
@@ -23,6 +23,9 @@ export default async function WatchlistPage() {
   const watchlist = watchlistRes.success ? watchlistRes.data || [] : [];
   const alerts = alertsRes.success ? alertsRes.data || [] : [];
   const news = newsRes.success ? newsRes.data || [] : [];
+
+  const earningsRes = await getWatchlistEarnings(watchlist.map((s) => s.symbol));
+  const earningsBySymbol = earningsRes.success ? earningsRes.data || {} : {};
 
   const isEmpty = watchlist.length === 0;
 
@@ -51,7 +54,7 @@ export default async function WatchlistPage() {
 
       <div className="watchlist-container">
         <div className="watchlist">
-          <WatchlistTable watchlist={watchlist} />
+          <WatchlistTable watchlist={watchlist} earningsBySymbol={earningsBySymbol} />
           <WatchlistNews news={news.slice(0, 10)} />
         </div>
 
