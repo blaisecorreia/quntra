@@ -24,9 +24,7 @@ const SignIn = () => {
 
     const onSubmit = async (data: SignInFormData) => {
         try {
-            console.log('Submitting sign in with:', data);
             const result = await signInWithEmail(data);
-            console.log('Sign in result:', result);
             if(result.success) {
                 toast.success('Signed in successfully!');
                 router.push('/');
@@ -54,7 +52,13 @@ const SignIn = () => {
                     placeholder="quntra@gmail.com"
                     register={register}
                     error={errors.email}
-                    validation={{ required: 'Email is required', pattern: /^\w+@\w+\.\w+$/ }}
+                    validation={{
+                        required: 'Email is required',
+                        pattern: {
+                            value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+                            message: 'Enter a valid email address',
+                        },
+                    }}
                 />
 
                 <InputField
