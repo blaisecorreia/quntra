@@ -212,10 +212,29 @@ declare global {
         isActive: boolean;
     };
 
+    type ChatActionType = 'add_to_watchlist' | 'create_alert';
+
+    type ChatActionParams = {
+        symbol: string;
+        company: string;
+        alertName?: string;
+        alertType?: 'upper' | 'lower';
+        threshold?: number;
+    };
+
+    type ChatAction = {
+        type: ChatActionType;
+        params: ChatActionParams;
+        status: 'pending' | 'confirmed' | 'cancelled' | 'failed';
+        error?: string;
+    };
+
     type ChatMessage = {
+        id?: string;
         role: 'user' | 'assistant';
         content: string;
         createdAt: string;
+        action?: ChatAction;
     };
 
     type ChatWidgetProps = {
