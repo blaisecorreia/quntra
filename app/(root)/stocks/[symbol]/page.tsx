@@ -1,4 +1,4 @@
-import { getStockQuote, getCompanyProfile, getCompanyNews } from '@/lib/actions/finnhub.actions';
+import { getStockQuote, getCompanyProfile, getCompanyNews, getUpcomingEarnings } from '@/lib/actions/finnhub.actions';
 import { getWatchlistSymbolsByUserId } from '@/lib/actions/watchlist.actions';
 import TradingViewWidget from '@/components/TradingViewWidget';
 import { WatchlistButton } from '@/components/Watchlist/WatchlistButton';
@@ -12,7 +12,8 @@ import {
 } from '@/lib/constants';
 import { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { formatPrice } from '@/lib/utils';
+import { formatPrice, formatEarningsDate } from '@/lib/utils';
+import { Calendar } from 'lucide-react';
 
 interface StockDetailsPageParams {
   params: Promise<{ symbol: string }>;
@@ -30,11 +31,12 @@ export default async function StockDetailsPage({ params }: StockDetailsPageParam
   const { symbol } = await params;
   const upperSymbol = symbol.toUpperCase();
 
-  const [quoteRes, profileRes, watchlistRes, newsRes] = await Promise.all([
+  const [quoteRes, profileRes, watchlistRes, newsRes, earningsRes] = await Promise.all([
     getStockQuote(upperSymbol),
     getCompanyProfile(upperSymbol),
     getWatchlistSymbolsByUserId(),
     getCompanyNews(upperSymbol),
+    getUpcomingEarnings(upperSymbol),
   ]);
 
   if (!quoteRes.success || !quoteRes.data?.c) {
@@ -43,6 +45,7 @@ export default async function StockDetailsPage({ params }: StockDetailsPageParam
 
   const isInWatchlist = watchlistRes.success && (watchlistRes.data || []).includes(upperSymbol);
   const news = newsRes.success ? (newsRes.data || []) : [];
+  const nextEarnings = earningsRes.success ? earningsRes.data : null;
 
   const price = quoteRes.data.c;
   const companyName = profileRes.data?.name || upperSymbol;
@@ -69,6 +72,12 @@ export default async function StockDetailsPage({ params }: StockDetailsPageParam
             {marketCap && (
               <p className="text-sm text-gray-500 mt-2">
                 Market Cap: ${(marketCap / 1_000_000_000).toFixed(2)}B
+              </p>
+            )}
+            {nextEarnings && (
+              <p className="flex items-center gap-1.5 text-sm text-yellow-500 mt-2">
+                <Calendar size={14} />
+                Next earnings: {formatEarningsDate(nextEarnings.date, nextEarnings.hour)}
               </p>
             )}
           </div>

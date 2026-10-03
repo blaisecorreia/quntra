@@ -467,7 +467,17 @@ export const STOCK_ALERT_UPPER_EMAIL_TEMPLATE = `<!DOCTYPE html>
                                     {{symbol}} has reached your target price! This could be a good time to review your position and consider taking profits or adjusting your strategy.
                                 </p>
                             </div>
-                            
+
+                            <!-- AI Context -->
+                            <div style="background-color: #141414; border: 1px solid #374151; border-radius: 8px; padding: 20px; margin-bottom: 30px;">
+                                <h3 style="margin: 0 0 8px 0; font-size: 14px; font-weight: 600; color: #FDD458; text-transform: uppercase; letter-spacing: 0.5px;">
+                                    💡 Why This Might Be Happening
+                                </h3>
+                                <p class="mobile-text" style="margin: 0; font-size: 14px; line-height: 1.5; color: #ccdadc;">
+                                    {{aiContext}}
+                                </p>
+                            </div>
+
                             <!-- Action Button -->
                             <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin-bottom: 30px;">
                                 <tr>
@@ -676,7 +686,17 @@ export const STOCK_ALERT_LOWER_EMAIL_TEMPLATE = `<!DOCTYPE html>
                                     {{symbol}} dropped below your target price. This might be a good time to buy.
                                 </p>
                             </div>
-                            
+
+                            <!-- AI Context -->
+                            <div style="background-color: #141414; border: 1px solid #374151; border-radius: 8px; padding: 20px; margin-bottom: 30px;">
+                                <h3 style="margin: 0 0 8px 0; font-size: 14px; font-weight: 600; color: #FDD458; text-transform: uppercase; letter-spacing: 0.5px;">
+                                    💡 Why This Might Be Happening
+                                </h3>
+                                <p class="mobile-text" style="margin: 0; font-size: 14px; line-height: 1.5; color: #ccdadc;">
+                                    {{aiContext}}
+                                </p>
+                            </div>
+
                             <!-- Action Button -->
                             <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin-bottom: 30px;">
                                 <tr>

@@ -4,8 +4,12 @@ import { WATCHLIST_TABLE_HEADER } from '@/lib/constants';
 import { WatchlistButton } from '@/components/Watchlist/WatchlistButton';
 import { AlertModal } from '@/components/Alerts/AlertModal';
 import { useState } from 'react';
+import { daysUntil, formatEarningsDate } from '@/lib/utils';
+import { Calendar } from 'lucide-react';
 
-export const WatchlistTable = ({ watchlist }: WatchlistTableProps) => {
+const EARNINGS_LOOKAHEAD_DAYS = 30;
+
+export const WatchlistTable = ({ watchlist, earningsBySymbol = {} }: WatchlistTableProps) => {
   const [selectedAlertSymbol, setSelectedAlertSymbol] = useState<string | null>(null);
   const [selectedAlertCompany, setSelectedAlertCompany] = useState<string | null>(null);
   const [alertModalOpen, setAlertModalOpen] = useState(false);
@@ -32,9 +36,25 @@ export const WatchlistTable = ({ watchlist }: WatchlistTableProps) => {
         </div>
 
         <div>
-          {watchlist.map((stock) => (
+          {watchlist.map((stock) => {
+            const earnings = earningsBySymbol[stock.symbol];
+            const daysAway = earnings ? daysUntil(earnings.date) : null;
+            const showEarnings = earnings && daysAway !== null && daysAway >= 0 && daysAway <= EARNINGS_LOOKAHEAD_DAYS;
+
+            return (
             <div key={stock.symbol} className="table-row">
-              <div className="table-cell">{stock.company}</div>
+              <div className="table-cell">
+                <div>{stock.company}</div>
+                {showEarnings && (
+                  <div
+                    className="earnings-badge"
+                    title={`Next earnings: ${formatEarningsDate(earnings.date, earnings.hour)}`}
+                  >
+                    <Calendar size={11} />
+                    {daysAway === 0 ? 'Today' : `${daysAway}d`}
+                  </div>
+                )}
+              </div>
               <div className="table-cell font-semibold">{stock.symbol}</div>
               <div className="table-cell">{stock.priceFormatted}</div>
               <div
@@ -68,7 +88,8 @@ export const WatchlistTable = ({ watchlist }: WatchlistTableProps) => {
                 />
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 

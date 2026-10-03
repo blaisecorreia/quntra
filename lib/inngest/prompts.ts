@@ -255,3 +255,18 @@ You have two tools available: add_to_watchlist and create_alert. Nothing you cal
 - Never call a tool with a guessed, placeholder, or made-up symbol, company name, or price. If any required detail is missing or ambiguous, ask a clarifying question in plain text instead of calling the tool.
 - Always include a short plain-text message alongside the tool call explaining what you're about to propose, since that text is shown to the user next to the confirmation step.
 - Propose at most one action per message.`
+
+export const PRICE_ALERT_CONTEXT_PROMPT = `A price alert just triggered for a stock in a trading app. Write exactly ONE short sentence (max 30 words) giving plausible context for why this might be happening, based on the recent news provided below.
+
+Stock: {{symbol}} ({{company}})
+Alert: price crossed {{direction}} the target of {{targetPrice}}
+Current price: {{currentPrice}}
+
+Recent news:
+{{newsContext}}
+
+RULES:
+- Base your sentence only on the news provided — never invent a reason, a specific event, or a number that isn't in the news above.
+- Frame it as likely context, not certainty (e.g. "likely related to", "comes after", "follows") — never state a cause as definite fact.
+- If the news doesn't clearly explain this specific price move, write one short generic sentence instead (e.g. suggesting the user check recent coverage) — do not force a connection that isn't there.
+- Respond with ONLY the one sentence. No preamble, no quotation marks, no markdown, no sign-off.`
