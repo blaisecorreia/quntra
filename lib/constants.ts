@@ -2,6 +2,7 @@ export const NAV_ITEMS = [
     { href: '/', label: 'Dashboard' },
     { href: '/search', label: 'Search' },
     { href: '/watchlist', label: 'Watchlist' },
+    { href: '/portfolio', label: 'Portfolio' },
 ];
 
 
@@ -331,4 +332,15 @@ export const WATCHLIST_TABLE_HEADER = [
     'P/E Ratio',
     'Alert',
     'Action',
+];
+
+export const PORTFOLIO_TABLE_HEADER = [
+    'Symbol',
+    'Company',
+    'Quantity',
+    'Avg Cost',
+    'Price',
+    'Market Value',
+    'Gain/Loss',
+    'Actions',
 ];

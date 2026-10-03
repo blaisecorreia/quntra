@@ -234,7 +234,7 @@ declare global {
         epsEstimate: number | null;
     };
 
-    type ChatActionType = 'add_to_watchlist' | 'create_alert';
+    type ChatActionType = 'add_to_watchlist' | 'remove_from_watchlist' | 'create_alert' | 'delete_alert' | 'toggle_alert_active';
 
     type ChatActionParams = {
         symbol: string;
@@ -242,6 +242,8 @@ declare global {
         alertName?: string;
         alertType?: 'upper' | 'lower';
         threshold?: number;
+        alertId?: string;
+        wasActive?: boolean;
     };
 
     type ChatAction = {
@@ -261,6 +263,35 @@ declare global {
 
     type ChatWidgetProps = {
         initialMessages: ChatMessage[];
+    };
+
+    type PositionWithData = {
+        id: string;
+        symbol: string;
+        company: string;
+        quantity: number;
+        averageCost: number;
+        costBasis: number;
+        costBasisFormatted: string;
+        currentPrice?: number;
+        priceFormatted?: string;
+        marketValue?: number;
+        marketValueFormatted?: string;
+        gainLoss?: number;
+        gainLossFormatted?: string;
+        gainLossPercent?: number;
+        gainLossPercentFormatted?: string;
+    };
+
+    type PortfolioTableProps = {
+        positions: PositionWithData[];
+    };
+
+    type PositionModalProps = {
+        open: boolean;
+        setOpen: (open: boolean) => void;
+        action: 'buy' | 'sell';
+        position?: { symbol: string; company: string; quantity: number } | null;
     };
 }
 
