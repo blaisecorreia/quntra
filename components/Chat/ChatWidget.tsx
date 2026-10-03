@@ -28,13 +28,28 @@ const markdownComponents = {
 };
 
 const describeAction = (action: ChatAction, tense: 'propose' | 'done' = 'propose'): string => {
-  if (action.type === 'add_to_watchlist') {
-    const verb = tense === 'propose' ? 'Add' : 'Added';
-    return `${verb} ${action.params.symbol} (${action.params.company}) to your watchlist`;
+  const { symbol, company, alertName, alertType, threshold, wasActive } = action.params;
+  const done = tense === 'done';
+
+  switch (action.type) {
+    case 'add_to_watchlist':
+      return `${done ? 'Added' : 'Add'} ${symbol} (${company}) to your watchlist`;
+    case 'remove_from_watchlist':
+      return `${done ? 'Removed' : 'Remove'} ${symbol} (${company}) from your watchlist`;
+    case 'create_alert':
+      return `${done ? 'Created alert' : 'Create alert'} "${alertName}" — notify when ${symbol} goes ${alertType === 'upper' ? 'above' : 'below'} $${threshold?.toFixed(2)}`;
+    case 'delete_alert':
+      return `${done ? 'Deleted' : 'Delete'} the alert "${alertName}" on ${symbol}`;
+    case 'toggle_alert_active': {
+      // wasActive reflects the real state at the moment this was proposed —
+      // an active alert gets paused, a paused one gets resumed.
+      const pausing = wasActive !== false;
+      if (pausing) return done ? `Paused the alert "${alertName}" on ${symbol}` : `Pause the alert "${alertName}" on ${symbol}`;
+      return done ? `Resumed the alert "${alertName}" on ${symbol}` : `Resume the alert "${alertName}" on ${symbol}`;
+    }
+    default:
+      return 'Perform this action';
   }
-  const { symbol, alertName, alertType, threshold } = action.params;
-  const verb = tense === 'propose' ? 'Create alert' : 'Created alert';
-  return `${verb} "${alertName}" — notify when ${symbol} goes ${alertType === 'upper' ? 'above' : 'below'} $${threshold?.toFixed(2)}`;
 };
 
 const ActionCard = ({

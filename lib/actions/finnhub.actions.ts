@@ -56,13 +56,28 @@ export const searchStocks = async (query?: string): Promise<{ success: boolean; 
       }
 
       stocks = data.result
-        .filter((r) => r.type === 'Common Stock' && r.symbol && r.description)
+        // Finnhub's search mixes in secondary listings on foreign exchanges
+        // (e.g. "APP.CN", "APP.VI") for almost any query — their symbols carry
+        // a dot suffix and just clutter results with near-duplicate tickers,
+        // so only keep primary-listing symbols.
+        .filter((r) => r.type === 'Common Stock' && r.symbol && r.description && !r.symbol.includes('.'))
         .map((r) => ({
           symbol: r.symbol.toUpperCase(),
           name: r.description,
           exchange: r.displaySymbol || 'US',
           type: r.type,
-        }))
+        }));
+
+      // Finnhub can list the same ticker twice (separate record types that
+      // collapse to the same symbol after the filtering above) — keep the
+      // first occurrence only.
+      const seenSymbols = new Set<string>();
+      stocks = stocks
+        .filter((s) => {
+          if (seenSymbols.has(s.symbol)) return false;
+          seenSymbols.add(s.symbol);
+          return true;
+        })
         .slice(0, 15);
     }
 

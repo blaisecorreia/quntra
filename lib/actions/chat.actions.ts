@@ -6,8 +6,8 @@ import { auth } from '@/lib/better-auth/auth';
 import { headers } from 'next/headers';
 import { connectToDatabase } from '@/database/mongoose';
 import { Chat } from '@/database/models/chat.model';
-import { getWatchlistWithData, addToWatchlist } from '@/lib/actions/watchlist.actions';
-import { getAlertsByUserId, createAlert } from '@/lib/actions/alerts.actions';
+import { getWatchlistWithData, addToWatchlist, removeFromWatchlist } from '@/lib/actions/watchlist.actions';
+import { getAlertsByUserId, createAlert, deleteAlert, toggleAlertActive } from '@/lib/actions/alerts.actions';
 import { CHATBOT_SYSTEM_PROMPT } from '@/lib/inngest/prompts';
 
 const MODEL_NAME = 'gemini-2.5-flash-lite';
@@ -42,6 +42,18 @@ const CHAT_TOOLS: Tool[] = [
         },
       },
       {
+        name: 'remove_from_watchlist',
+        description: "Propose removing a stock from the user's watchlist. Only use this for a stock that is actually in the user's current watchlist, shown above.",
+        parameters: {
+          type: SchemaType.OBJECT,
+          properties: {
+            symbol: { type: SchemaType.STRING, description: 'The stock ticker symbol, e.g. AAPL' },
+            company: { type: SchemaType.STRING, description: 'The full company name, e.g. Apple Inc.' },
+          },
+          required: ['symbol', 'company'],
+        },
+      },
+      {
         name: 'create_alert',
         description: 'Propose creating a price alert for a stock.',
         parameters: {
@@ -59,6 +71,28 @@ const CHAT_TOOLS: Tool[] = [
             threshold: { type: SchemaType.NUMBER, description: 'The target price in USD' },
           },
           required: ['symbol', 'company', 'alertName', 'alertType', 'threshold'],
+        },
+      },
+      {
+        name: 'delete_alert',
+        description: "Propose permanently deleting one of the user's existing alerts, listed above with its exact alertId.",
+        parameters: {
+          type: SchemaType.OBJECT,
+          properties: {
+            alertId: { type: SchemaType.STRING, description: "The exact alertId shown in the active alerts list — never guess or invent one." },
+          },
+          required: ['alertId'],
+        },
+      },
+      {
+        name: 'toggle_alert_active',
+        description: "Propose pausing an active alert, or resuming a paused one, from the user's existing alerts listed above.",
+        parameters: {
+          type: SchemaType.OBJECT,
+          properties: {
+            alertId: { type: SchemaType.STRING, description: "The exact alertId shown in the active alerts list — never guess or invent one." },
+          },
+          required: ['alertId'],
         },
       },
     ],
@@ -79,23 +113,40 @@ const toChatMessage = (m: StoredChatMessage): ChatMessage => ({
 // Turns a raw Gemini function-call into a validated pending action, or null
 // if the model supplied bad/incomplete arguments — in that case we fall
 // back to treating the turn as plain text rather than showing a broken
-// confirmation card.
-const buildPendingAction = (name: string, args: Record<string, unknown>): ChatAction | null => {
-  const symbol = typeof args.symbol === 'string' ? args.symbol.trim().toUpperCase() : '';
-  const company = typeof args.company === 'string' ? args.company.trim() : '';
-  if (!symbol || !company) return null;
-
-  if (name === 'add_to_watchlist') {
-    return { type: 'add_to_watchlist', params: { symbol, company }, status: 'pending' };
+// confirmation card. `alerts` is the user's real, live alert list — for the
+// two id-based actions, everything shown on the confirmation card (symbol,
+// alertName, current active state) is read back from this real record, not
+// from the model's text, so a hallucinated or stale description can never
+// reach the UI even if the model gets the id right but the description wrong.
+const buildPendingAction = (name: string, args: Record<string, unknown>, alerts: Alert[]): ChatAction | null => {
+  if (name === 'add_to_watchlist' || name === 'remove_from_watchlist') {
+    const symbol = typeof args.symbol === 'string' ? args.symbol.trim().toUpperCase() : '';
+    const company = typeof args.company === 'string' ? args.company.trim() : '';
+    if (!symbol || !company) return null;
+    return { type: name, params: { symbol, company }, status: 'pending' };
   }
 
   if (name === 'create_alert') {
+    const symbol = typeof args.symbol === 'string' ? args.symbol.trim().toUpperCase() : '';
+    const company = typeof args.company === 'string' ? args.company.trim() : '';
     const alertName = typeof args.alertName === 'string' ? args.alertName.trim() : '';
     const alertType = args.alertType === 'upper' || args.alertType === 'lower' ? args.alertType : undefined;
     const threshold = typeof args.threshold === 'number' && Number.isFinite(args.threshold) && args.threshold > 0 ? args.threshold : undefined;
-    if (!alertName || !alertType || !threshold) return null;
+    if (!symbol || !company || !alertName || !alertType || !threshold) return null;
 
     return { type: 'create_alert', params: { symbol, company, alertName, alertType, threshold }, status: 'pending' };
+  }
+
+  if (name === 'delete_alert' || name === 'toggle_alert_active') {
+    const alertId = typeof args.alertId === 'string' ? args.alertId.trim() : '';
+    const alert = alerts.find((a) => a.id === alertId);
+    if (!alertId || !alert) return null;
+
+    return {
+      type: name,
+      params: { symbol: alert.symbol, company: alert.symbol, alertName: alert.alertName, alertId: alert.id, wasActive: alert.isActive },
+      status: 'pending',
+    };
   }
 
   return null;
@@ -168,7 +219,7 @@ export const sendChatMessage = async ({ message }: { message: string }): Promise
       ? alerts
           .map(
             (a) =>
-              `- ${a.symbol} "${a.alertName}": alert when price goes ${a.alertType === 'upper' ? 'above' : 'below'} $${a.threshold.toFixed(2)} (currently $${a.currentPrice.toFixed(2)}, ${a.isActive ? 'active' : 'paused'})`
+              `- [alertId: ${a.id}] ${a.symbol} "${a.alertName}": alert when price goes ${a.alertType === 'upper' ? 'above' : 'below'} $${a.threshold.toFixed(2)} (currently $${a.currentPrice.toFixed(2)}, ${a.isActive ? 'active' : 'paused'})`
           )
           .join('\n')
       : 'No active alerts.';
@@ -197,7 +248,7 @@ export const sendChatMessage = async ({ message }: { message: string }): Promise
     // a time, which is what the system prompt asks for anyway.
     const functionCalls = result.response.functionCalls();
     const firstCall = functionCalls?.[0];
-    const action = firstCall ? buildPendingAction(firstCall.name, firstCall.args as Record<string, unknown>) : null;
+    const action = firstCall ? buildPendingAction(firstCall.name, firstCall.args as Record<string, unknown>, alerts) : null;
 
     const replyText = result.response.text() || (action ? 'Here’s what I’d like to do:' : '');
 
@@ -267,6 +318,8 @@ export const resolveChatAction = async ({
 
     if (type === 'add_to_watchlist') {
       execResult = await addToWatchlist({ symbol: params.symbol, company: params.company });
+    } else if (type === 'remove_from_watchlist') {
+      execResult = await removeFromWatchlist({ symbol: params.symbol });
     } else if (type === 'create_alert') {
       execResult = await createAlert({
         symbol: params.symbol,
@@ -275,6 +328,14 @@ export const resolveChatAction = async ({
         alertType: params.alertType || 'upper',
         threshold: String(params.threshold ?? ''),
       });
+    } else if (type === 'delete_alert') {
+      execResult = params.alertId
+        ? await deleteAlert({ alertId: params.alertId })
+        : { success: false, error: 'Missing alert id' };
+    } else if (type === 'toggle_alert_active') {
+      execResult = params.alertId
+        ? await toggleAlertActive({ alertId: params.alertId })
+        : { success: false, error: 'Missing alert id' };
     } else {
       execResult = { success: false, error: 'Unknown action type' };
     }
