@@ -19,10 +19,17 @@ export const signUpWithEmail = async ({ email, password, fullName, country, inve
         })
 
         if(response) {
-            await inngest.send({
-                name: 'app/user.created',
-                data: { email, name: fullName, country, investmentGoals, riskTolerance, preferredIndustry }
-            })
+            // The account is already created at this point — a failure to queue
+            // the welcome email (e.g. Inngest isn't reachable in local dev) must
+            // never make a successful sign-up look like it failed.
+            try {
+                await inngest.send({
+                    name: 'app/user.created',
+                    data: { email, name: fullName, country, investmentGoals, riskTolerance, preferredIndustry }
+                })
+            } catch (e) {
+                console.log('Failed to queue welcome email event', e)
+            }
         }
 
         return { success: true, data: response }

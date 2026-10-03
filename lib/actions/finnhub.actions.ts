@@ -180,3 +180,70 @@ export const getMarketNews = async (): Promise<{ success: boolean; data?: Market
     return { success: false, error: 'Market news fetch failed' };
   }
 };
+
+const toDateString = (date: Date): string => date.toISOString().split('T')[0];
+
+const toEarningsEvent = (e: RawEarningsEvent): EarningsEvent => ({
+  symbol: e.symbol,
+  date: e.date,
+  hour: e.hour,
+  epsEstimate: e.epsEstimate,
+});
+
+// Only future, not-yet-reported earnings are useful to show — Finnhub's
+// calendar can include recent past entries within the requested window.
+const isUpcoming = (e: RawEarningsEvent, todayStr: string): boolean =>
+  e.date >= todayStr && e.epsActual === null;
+
+export const getUpcomingEarnings = async (symbol: string): Promise<{ success: boolean; data?: EarningsEvent | null; error?: string }> => {
+  try {
+    const today = new Date();
+    const from = toDateString(today);
+    const to = toDateString(new Date(today.getTime() + 180 * 24 * 60 * 60 * 1000));
+
+    const data = await fetchJSON<EarningsCalendarResponse>(
+      `/calendar/earnings?symbol=${symbol.toUpperCase()}&from=${from}&to=${to}`,
+      21600
+    );
+
+    if (!data || !data.earningsCalendar) {
+      return { success: true, data: null };
+    }
+
+    const upcoming = data.earningsCalendar
+      .filter((e) => isUpcoming(e, from))
+      .sort((a, b) => a.date.localeCompare(b.date))[0];
+
+    return { success: true, data: upcoming ? toEarningsEvent(upcoming) : null };
+  } catch (error) {
+    console.log('getUpcomingEarnings failed', error);
+    return { success: false, error: 'Failed to fetch earnings calendar' };
+  }
+};
+
+// The unfiltered /calendar/earnings endpoint is capped at ~1500 entries on
+// the free tier and is missing well-known symbols within range (confirmed:
+// it omits AAPL even when AAPL has a confirmed date in the window) — so
+// this queries per symbol instead, same pattern already used for watchlist
+// quotes/profile/financials elsewhere in this file.
+export const getWatchlistEarnings = async (symbols: string[]): Promise<{ success: boolean; data?: Record<string, EarningsEvent>; error?: string }> => {
+  try {
+    if (symbols.length === 0) {
+      return { success: true, data: {} };
+    }
+
+    const results = await Promise.allSettled(symbols.map((symbol) => getUpcomingEarnings(symbol)));
+
+    const bySymbol: Record<string, EarningsEvent> = {};
+    results.forEach((result, i) => {
+      if (result.status === 'fulfilled' && result.value.success && result.value.data) {
+        bySymbol[symbols[i].toUpperCase()] = result.value.data;
+      }
+    });
+
+    return { success: true, data: bySymbol };
+  } catch (error) {
+    console.log('getWatchlistEarnings failed', error);
+    return { success: false, error: 'Failed to fetch earnings calendar' };
+  }
+};

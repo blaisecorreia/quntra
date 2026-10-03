@@ -32,3 +32,19 @@ export const formatMarketCap = (marketCap?: number): string => {
   }
   return formatPrice(marketCap);
 };
+
+export const formatEarningsDate = (dateStr: string, hour?: 'bmo' | 'amc' | ''): string => {
+  // Parsing as UTC noon avoids the date shifting back a day in timezones
+  // behind UTC when `new Date('YYYY-MM-DD')` is interpreted as midnight UTC.
+  const date = new Date(`${dateStr}T12:00:00Z`);
+  const formatted = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
+  const hourLabel = hour === 'bmo' ? 'before market open' : hour === 'amc' ? 'after market close' : undefined;
+  return hourLabel ? `${formatted} (${hourLabel})` : formatted;
+};
+
+export const daysUntil = (dateStr: string): number => {
+  const today = new Date();
+  const todayUTC = Date.UTC(today.getFullYear(), today.getMonth(), today.getDate());
+  const target = new Date(`${dateStr}T00:00:00Z`).getTime();
+  return Math.round((target - todayUTC) / (24 * 60 * 60 * 1000));
+};

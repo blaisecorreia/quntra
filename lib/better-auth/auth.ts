@@ -24,7 +24,7 @@ const createAuthOptions = (db: NonNullable<Awaited<ReturnType<typeof connectToDa
         requireEmailVerification: false,
         minPasswordLength: 8,
         maxPasswordLength: 128,
-        autoSignIn: true,
+        autoSignIn: false,
     },
     // Persist the onboarding answers collected on the sign-up form.
     // Without these, better-auth silently drops any extra fields sent
